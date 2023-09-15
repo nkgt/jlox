@@ -4,3 +4,4 @@ plugins {
 
 rootProject.name = 'jlox'
 include('jlox')
+include('ast-generator')

@@ -1,0 +1,17 @@
+plugins {
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(20)
+    }
+}
+
+run {
+    standardInput = System.in
+}
+
+application {
+    mainClass = 'com.nkgt.tool.GenerateAST'
+}
