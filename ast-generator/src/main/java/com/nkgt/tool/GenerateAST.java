@@ -37,6 +37,9 @@ public class GenerateAST {
             //writer.println("import java.util.List;\n");
             writer.println("abstract class " + baseName + " {");
 
+            defineVisitor(writer, baseName, types);
+            writer.println("    abstract<R> R accept(Visitor<R> visitor);\n");
+
             for(int i = 0; i < types.size(); i++) {
                 String[] tokens = types.get(i).split(":");
                 String className = tokens[0].trim();
@@ -58,20 +61,41 @@ public class GenerateAST {
     ) {
         String[] fields = fieldList.split(", ");
 
-        writer.println("\tstatic class " + className + " extends " + baseName + " {");
-        writer.println("\t\t" + className + "(" + fieldList + ") {");
+        writer.println("    static class " + className + " extends " + baseName + " {");
+        writer.println("        " + className + "(" + fieldList + ") {");
 
         for(String field : fields) {
             String name = field.split(" ")[1];
-            writer.println("\t\t\tthis." + name + " = " + name + ";");
+            writer.println("            this." + name + " = " + name + ";");
         }
 
-        writer.println("\t\t}\n");
+        writer.println("        }\n");
+
+        writer.println("        @Override");
+        writer.println("        <R> R accept(Visitor<R> visitor) {");
+        writer.println("            return visitor.visit" + className + baseName + "(this);");
+        writer.println("        }\n");
 
         for(String field : fields) {
-            writer.println("\t\tfinal " + field + ";");
+            writer.println("        final " + field + ";");
         }
 
-        writer.println("\t}");
+        writer.println("    }");
+    }
+
+    private static void defineVisitor(
+            PrintWriter writer,
+            String baseName,
+            List<String> types
+    ) {
+        writer.println("    interface Visitor<R> {");
+
+        for(String type : types) {
+            String typeName = type.split(":")[0].trim();
+            writer.println("        R visit" + typeName + baseName + "(" +
+                           typeName + " " + baseName.toLowerCase() + ");");
+        }
+
+        writer.println("    }\n");
     }
 }
