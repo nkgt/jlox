@@ -156,7 +156,7 @@ class Scanner {
         current++;
 
         String value = source.substring(start + 1, current - 1);
-        addToken(STRING, null);
+        addToken(STRING, value);
     }
 
     private void number() {
