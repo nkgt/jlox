@@ -1,13 +1,30 @@
 package com.nkgt.jlox;
 
-public class Interpreter implements Expr.Visitor<Object> {
-    void interpret(Expr expression) {
+import java.util.List;
+
+public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+    private Environment environment = new Environment();
+    private ASTPrinter printer = new ASTPrinter();
+
+    void interpret(List<Stmt> statements) {
+        StringBuilder ASTOutput = new StringBuilder();
+        ASTOutput.append("-----AST-----\n");
+
         try {
-            Object value = expression.accept(this);
-            System.out.println(stringify(value));
+            for(Stmt statement : statements) {
+                ASTOutput.append(printer.print(statement)).append("\n");
+                execute(statement);
+            }
         } catch (RuntimeError error) {
             Lox.runtimeError(error);
         }
+
+        ASTOutput.append("-------------\n");
+        System.out.println(ASTOutput);
+    }
+
+    private void execute(Stmt stmt) {
+        stmt.accept(this);
     }
 
     private String stringify(Object object) {
@@ -23,6 +40,55 @@ public class Interpreter implements Expr.Visitor<Object> {
         }
 
         return object.toString();
+    }
+
+    @Override
+    public Void visitBlockStmt(Stmt.Block stmt) {
+        executeBlock(stmt.statements, new Environment(environment));
+        return null;
+    }
+
+    void executeBlock(List<Stmt> statements, Environment environment) {
+        Environment previous = this.environment;
+
+        try {
+            this.environment = environment;
+
+            for(Stmt statement : statements) {
+                execute(statement);
+            }
+        } finally {
+            this.environment = previous;
+        }
+    }
+
+    @Override
+    public Void visitVarStmt(Stmt.Var stmt) {
+        Object value = null;
+        if(stmt.initializer != null) {
+            value = stmt.initializer.accept(this);
+        }
+
+        environment.define(stmt.name.lexeme, value);
+        return null;
+    }
+
+    @Override
+    public Object visitVariableExpr(Expr.Variable expr) {
+        return environment.get(expr.name);
+    }
+
+    @Override
+    public Void visitExpressionStmt(Stmt.Expression stmt) {
+        stmt.expression.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitPrintStmt(Stmt.Print stmt) {
+        Object value = stmt.expression.accept(this);
+        System.out.println(stringify(value));
+        return null;
     }
 
     @Override
@@ -102,6 +168,13 @@ public class Interpreter implements Expr.Visitor<Object> {
             case EQUAL_EQUAL -> isEqual(left, right);
             default -> null;
         };
+    }
+
+    @Override
+    public Object visitAssignExpr(Expr.Assign expr) {
+        Object value = expr.value.accept(this);
+        environment.assign(expr.name, value);
+        return value;
     }
 
     private boolean getBoolean(Object object) {

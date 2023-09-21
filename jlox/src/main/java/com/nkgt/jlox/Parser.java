@@ -1,5 +1,6 @@
 package com.nkgt.jlox;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.nkgt.jlox.TokenType.*;
@@ -13,16 +14,74 @@ class Parser {
         this.tokens = tokens;
     }
 
-    Expr parse() {
+    List<Stmt> parse() {
+        List<Stmt> statements = new ArrayList<>();
+        while(tokens.get(current).type != EOF) {
+            statements.add(declaration());
+        }
+
+        return statements;
+    }
+
+    private Stmt declaration() {
         try {
-            return expression();
-        } catch(ParseError error) {
+            if(match(VAR)) return varDeclaration();
+            return statement();
+        } catch (ParseError error) {
+            synchronize();
             return null;
         }
     }
 
+    private Stmt varDeclaration() {
+        Token name = consume(IDENTIFIER, "Expect variable name.");
+
+        Expr initializer = null;
+        if(match(EQUAL)) initializer = expression();
+
+        consume(SEMICOLON, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+
+    private Stmt statement() {
+        if(match(PRINT)) return printStatement();
+        if(match(LEFT_BRACE)) return new Stmt.Block(block());
+
+        return expressionStatement();
+    }
+
+    private Stmt printStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expect ';' after expression");
+        return new Stmt.Print(expr);
+    }
+
+    private Stmt expressionStatement() {
+        Expr expr = expression();
+        consume(SEMICOLON, "Expect ';' after expression");
+        return new Stmt.Expression(expr);
+    }
+
     private Expr expression() {
-        return equality();
+        return assignment();
+    }
+
+    private Expr assignment() {
+       Expr expr = equality();
+
+       if(match(EQUAL)) {
+           Token equals = tokens.get(current - 1);
+           Expr value = assignment();
+
+           if(expr instanceof Expr.Variable) {
+               Token name = ((Expr.Variable)expr).name;
+               return new Expr.Assign(name, value);
+           }
+
+           error(equals, "Invalid assignment target.");
+       }
+
+       return expr;
     }
 
     private Expr equality() {
@@ -88,6 +147,10 @@ class Parser {
         if(match(TRUE)) return new Expr.Literal(true);
         if(match(NIL)) return new Expr.Literal(null);
 
+        if(match(IDENTIFIER)) {
+            return new Expr.Variable((tokens.get(current - 1)));
+        }
+
         if(match(NUMBER, STRING)) {
             return new Expr.Literal(tokens.get(current - 1).literal);
         }
@@ -99,6 +162,17 @@ class Parser {
         }
 
         throw error(tokens.get(current), "Expect expression.");
+    }
+
+    private List<Stmt> block() {
+        List<Stmt> statements = new ArrayList<>();
+
+        while(!check(RIGHT_BRACE) && tokens.get(current).type != EOF) {
+            statements.add(declaration());
+        }
+
+        consume(RIGHT_BRACE, "Expect '}' after block.");
+        return statements;
     }
 
     private boolean match(TokenType... types) {
@@ -132,7 +206,7 @@ class Parser {
         return new ParseError();
     }
 
-    private void synchornize() {
+    private void synchronize() {
         advance();
 
         while(tokens.get(current).type != EOF) {
