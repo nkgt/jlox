@@ -4,7 +4,7 @@ import java.util.List;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private Environment environment = new Environment();
-    private ASTPrinter printer = new ASTPrinter();
+    private final ASTPrinter printer = new ASTPrinter();
 
     void interpret(List<Stmt> statements) {
         StringBuilder ASTOutput = new StringBuilder();
@@ -13,7 +13,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         try {
             for(Stmt statement : statements) {
                 ASTOutput.append(printer.print(statement)).append("\n");
-                execute(statement);
+                statement.accept(this);
             }
         } catch (RuntimeError error) {
             Lox.runtimeError(error);
@@ -21,10 +21,6 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
         ASTOutput.append("-------------\n");
         System.out.println(ASTOutput);
-    }
-
-    private void execute(Stmt stmt) {
-        stmt.accept(this);
     }
 
     private String stringify(Object object) {
@@ -55,7 +51,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             this.environment = environment;
 
             for(Stmt statement : statements) {
-                execute(statement);
+                statement.accept(this);
             }
         } finally {
             this.environment = previous;
@@ -74,6 +70,15 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitWhileStmt(Stmt.While stmt) {
+        while(getBoolean(stmt.condition.accept(this))) {
+            stmt.body.accept(this);
+        }
+
+        return null;
+    }
+
+    @Override
     public Object visitVariableExpr(Expr.Variable expr) {
         return environment.get(expr.name);
     }
@@ -81,6 +86,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Void visitExpressionStmt(Stmt.Expression stmt) {
         stmt.expression.accept(this);
+        return null;
+    }
+
+    @Override
+    public Void visitIfStmt(Stmt.If stmt) {
+        if(getBoolean(stmt.condition.accept((this)))) {
+            stmt.thenBranch.accept(this);
+        } else if(stmt.elseBranch != null) {
+            stmt.elseBranch.accept(this);
+        }
+
         return null;
     }
 
@@ -94,6 +110,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Object visitLiteralExpr(Expr.Literal expr) {
         return expr.value;
+    }
+
+    @Override
+    public Object visitLogicalExpr(Expr.Logical expr) {
+        Object left = expr.left.accept(this);
+
+        if(expr.operator.type == TokenType.OR) {
+            if(getBoolean(left)) return left;
+        } else {
+            if(!getBoolean(left)) return left;
+        }
+
+        return expr.right.accept(this);
     }
 
     @Override

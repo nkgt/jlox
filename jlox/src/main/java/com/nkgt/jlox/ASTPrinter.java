@@ -32,6 +32,24 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     }
 
     @Override
+    public String visitLogicalExpr(Expr.Logical expr) {
+        return parenthesize(expr.operator.lexeme, expr.left, expr.right);
+    }
+
+    @Override
+    public String visitIfStmt(Stmt.If stmt) {
+        return "(If " + parenthesize("Condition", stmt.condition) +
+               "\n\tthen " + stmt.thenBranch.accept(this) +
+               "\n\telse " + stmt.elseBranch.accept(this) + ")";
+    }
+
+    @Override
+    public String visitWhileStmt(Stmt.While stmt) {
+        return "(While " + parenthesize("Condition", stmt.condition) +
+               "\n\tBody " + stmt.body.accept(this) + ")";
+    }
+
+    @Override
     public String visitUnaryExpr(Expr.Unary expr) {
         return parenthesize(expr.operator.lexeme, expr.right);
     }
@@ -60,7 +78,11 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     }
 
     public String visitVarStmt(Stmt.Var stmt) {
-        return parenthesize("Var " + stmt.name.lexeme, stmt.initializer);
+        if(stmt.initializer != null) {
+            return parenthesize("Var " + stmt.name.lexeme, stmt.initializer);
+        }
+
+        return "(Var " + stmt.name.lexeme + ")";
     }
 
     public String visitBlockStmt(Stmt.Block stmt) {
