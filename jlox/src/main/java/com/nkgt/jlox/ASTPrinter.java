@@ -32,21 +32,49 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     }
 
     @Override
+    public String visitCallExpr(Expr.Call expr) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("(Call ").append(expr.callee.accept(this)).append(" ");
+
+        if(!expr.arguments.isEmpty()) {
+            builder.append("(Args ");
+
+            for(int i = 0; i < expr.arguments.size(); i++) {
+                builder.append(expr.arguments.get(i).accept(this));
+
+                if(i != expr.arguments.size() - 1) builder.append(" ");
+            }
+
+            builder.append(")");
+        }
+
+        builder.append(")");
+        return builder.toString();
+    }
+
+    @Override
     public String visitLogicalExpr(Expr.Logical expr) {
         return parenthesize(expr.operator.lexeme, expr.left, expr.right);
     }
 
     @Override
     public String visitIfStmt(Stmt.If stmt) {
-        return "(If " + parenthesize("Condition", stmt.condition) +
-               "\n\tthen " + stmt.thenBranch.accept(this) +
-               "\n\telse " + stmt.elseBranch.accept(this) + ")";
+        StringBuilder builder = new StringBuilder();
+        builder.append("(If ")
+               .append(parenthesize("Condition", stmt.condition))
+               .append("\n\tthen ").append(stmt.thenBranch.accept(this));
+
+        if(stmt.elseBranch != null) {
+            builder.append("\n\telse ").append(stmt.elseBranch.accept(this)).append(")");
+        }
+
+        return builder.toString();
     }
 
     @Override
     public String visitWhileStmt(Stmt.While stmt) {
         return "(While " + parenthesize("Condition", stmt.condition) +
-               "\n\tBody " + stmt.body.accept(this) + ")";
+               "\n\t" + stmt.body.accept(this) + ")";
     }
 
     @Override
@@ -73,8 +101,43 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
        return parenthesize("Stmt", stmt.expression);
     }
 
+    public String visitFunctionStmt(Stmt.Function stmt) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("(Fun ").append(stmt.name.lexeme).append(" ");
+
+        if(!stmt.params.isEmpty()) {
+            builder.append("\n\t(Params ");
+
+            for(int i = 0; i < stmt.params.size(); i++) {
+                builder.append(stmt.params.get(i).lexeme);
+
+                if(i != stmt.params.size() - 1) builder.append(" ");
+            }
+
+            builder.append("\n\t)");
+        }
+
+        if(!stmt.body.isEmpty()) {
+            builder.append("\n\t(Body");
+
+            for(Stmt statement : stmt.body) {
+                builder.append("\n\t\t(").append(statement.accept(this)).append(")");
+            }
+
+            builder.append("\n\t)");
+        }
+
+        builder.append(")");
+
+        return builder.toString();
+    }
+
     public String visitPrintStmt(Stmt.Print stmt) {
         return parenthesize("Print", stmt.expression);
+    }
+
+    public String visitReturnStmt(Stmt.Return stmt) {
+        return parenthesize("Return", stmt.value);
     }
 
     public String visitVarStmt(Stmt.Var stmt) {
