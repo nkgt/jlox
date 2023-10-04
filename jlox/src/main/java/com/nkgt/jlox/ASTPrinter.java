@@ -1,8 +1,55 @@
 package com.nkgt.jlox;
 
+import java.util.List;
+
 class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     String print(Stmt stmt) {
         return stmt.accept(this);
+    }
+
+    @Override
+    public String visitClassStmt(Stmt.Class stmt) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("(Class ").append(stmt.name.lexeme);
+
+        if(!stmt.methods.isEmpty()) {
+            builder.append("\n\t(Methods ");
+
+            List<Stmt.Function> methods = stmt.methods;
+            for(int i = 0; i < methods.size(); i++) {
+                builder.append("\n\t\t").append(methods.get(i).name.lexeme).append("(");
+
+                List<Token> params = stmt.methods.get(i).params;
+                if(!params.isEmpty()) {
+                    for(int j = 0; j < params.size(); j++) {
+                        builder.append(params.get(j).lexeme);
+                        if(j != params.size() - 1) builder.append(" ");
+                    }
+                }
+
+                builder.append(")");
+            }
+
+            builder.append("\n\t)");
+        }
+
+        builder.append("\n)");
+        return builder.toString();
+    }
+
+    @Override
+    public String visitThisExpr(Expr.This expr) {
+        return "this";
+    }
+
+    @Override
+    public String visitGetExpr(Expr.Get expr) {
+        return "(Get " + expr.object.accept(this) + "." + expr.name.lexeme + ")";
+    }
+
+    @Override
+    public String visitSetExpr(Expr.Set expr) {
+        return "(Set " + expr.object.accept(this) + "." + expr.name.lexeme + " " + expr.value.accept(this) + ")";
     }
 
     @Override
@@ -34,10 +81,10 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     @Override
     public String visitCallExpr(Expr.Call expr) {
         StringBuilder builder = new StringBuilder();
-        builder.append("(Call ").append(expr.callee.accept(this)).append(" ");
+        builder.append("(Call ").append(expr.callee.accept(this));
 
         if(!expr.arguments.isEmpty()) {
-            builder.append("(Args ");
+            builder.append(" (Args ");
 
             for(int i = 0; i < expr.arguments.size(); i++) {
                 builder.append(expr.arguments.get(i).accept(this));
@@ -151,7 +198,7 @@ class ASTPrinter implements Expr.Visitor<String>, Stmt.Visitor<String> {
     public String visitBlockStmt(Stmt.Block stmt) {
         StringBuilder builder = new StringBuilder();
 
-        builder.append("(").append("Block\n");
+        builder.append("(Block\n");
 
         for(Stmt statement : stmt.statements) {
             builder.append(" ")

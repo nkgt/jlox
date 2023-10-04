@@ -1,0 +1,21 @@
+class Bacon {
+  eat() {
+    print "Crunch crunch crunch!";
+  }
+}
+
+class Bacon2 {
+  drink(param, param2, param3) {
+    print "Crunch crunch crunch!";
+  }
+
+  eat(param) {
+    print "Crunch crunch crunch!";
+  }
+}
+
+Bacon().eat();
+
+var b = Bacon();
+b.field = 3;
+print b.field;
